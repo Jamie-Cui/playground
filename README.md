@@ -1,0 +1,11 @@
+# Playground
+
+A personal repository for experimental code and quick experiments.
+
+## Contents
+
+- `001-lean-hello-world/` - Lean 4 hello world project
+
+## License
+
+This repository is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.

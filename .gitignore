@@ -1,3 +1,9 @@
+# llm
+.agent-shell
+.claude
+
+# lean4
 .lake
 
+# ide
 .projectile-cache.eld
