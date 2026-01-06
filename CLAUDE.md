@@ -11,7 +11,7 @@ This is a personal "playground" repository for experimental code and quick learn
 The repository contains independent experiments in separate directories:
 
 - `001-lean-hello-world/` - Lean 4 theorem prover project
-- `002-open-code-elisp/` - Emacs Lisp implementation
+- `002-open-code-elisp/` - OpenCode AI coding agent (Emacs Lisp)
 
 Each directory is self-contained with its own build system and dependencies.
 
@@ -48,3 +48,67 @@ The project defines:
 When adding new modules to the library:
 1. Create files in `Lean4Tutorial/` directory
 2. Import them in `Lean4Tutorial.lean`
+
+## OpenCode Emacs Lisp (002-open-code-elisp/)
+
+An Emacs Lisp implementation of [OpenCode](https://github.com/anomalyco/opencode), an open-source AI coding agent with direct API integration to Anthropic Claude and OpenAI GPT models.
+
+### Building and Loading
+
+```bash
+# Byte compile (optional, for performance)
+cd 002-open-code-elisp
+make compile
+```
+
+```elisp
+;; In init.el
+(add-to-list 'load-path "~/proj/playground/002-open-code-elisp/lisp")
+(require 'opencode)
+
+;; Configure API key (or set ANTHROPIC_API_KEY / OPENAI_API_KEY env var)
+(setq opencode-api-key "sk-ant-...")
+
+;; Enable globally
+(global-opencode-mode 1)
+```
+
+### Key Commands
+
+| Command | Keybinding | Description |
+|---------|-----------|-------------|
+| `opencode-prompt` | `C-c o p` | Send prompt to AI |
+| `opencode-prompt-region` | `C-c o r` | Send region to AI |
+| `opencode-ask-at-point` | `C-c o a` | Ask about symbol at point |
+| `opencode-clear-session` | `C-c o c` | Clear session history |
+
+### Architecture
+
+```
+lisp/
+├── opencode.el         # Main entry point, minor mode
+├── opencode-config.el  # Customize group (opencode-*)
+├── opencode-api.el     # HTTP client for LLM providers
+├── opencode-session.el # Session & message history
+├── opencode-tools.el   # File operations (read, write, grep, glob, bash)
+├── opencode-agent.el   # Agent logic with tool calling
+└── opencode-ui.el      # Minibuffer interface & output buffer
+```
+
+### Configuration
+
+Customize via `M-x customize-group RET opencode RET` or set variables:
+
+- `opencode-provider` - `anthropic`, `openai`, or `openai-compatible`
+- `opencode-model` - Model identifier (default: `claude-sonnet-4-20250514`)
+- `opencode-enable-tools` - List of tools: `(read write grep glob bash)`
+- `opencode-buffer-name` - Output buffer name (default: `*opencode*`)
+
+### Available Tools
+
+The AI agent has access to these tools for code operations:
+- `read_file` - Read file contents
+- `write_file` - Write content to file
+- `grep` - Regex search in files
+- `glob` - Find files matching pattern
+- `bash` - Execute shell commands
