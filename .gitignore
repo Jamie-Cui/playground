@@ -1,3 +1,6 @@
+# junks
+*.elc
+
 # llm
 .agent-shell
 .claude
