@@ -124,6 +124,17 @@ When enabled, API requests and responses are logged for debugging."
   :type 'boolean
   :group 'magent)
 
+(defcustom magent-default-agent "build"
+  "The default agent to use for new sessions.
+Should match one of the registered agent names."
+  :type 'string
+  :group 'magent)
+
+(defcustom magent-load-custom-agents t
+  "Whether to load custom agents from .opencode/agent/*.md files."
+  :type 'boolean
+  :group 'magent)
+
 ;;;###autoload
 (defun magent-get-api-key ()
   "Get the API key for current provider.

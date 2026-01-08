@@ -14,6 +14,7 @@
 
 (require 'magent-session)
 (require 'magent-agent)
+(require 'magent-agent-registry)
 
 ;;; Buffer management
 
@@ -300,6 +301,33 @@ Handles code blocks, bold, and inline code."
     (let ((inhibit-read-only t))
       (erase-buffer)))
   (message "Magent: Log cleared"))
+
+;;; Agent selection commands
+
+;;;###autoload
+(defun magent-select-agent ()
+  "Select an agent for the current session."
+  (interactive)
+  (let* ((agents (magent-agent-registry-primary-agents))
+         (agent-names (mapcar #'magent-agent-info-name agents))
+         (selected (completing-read "Select agent: " agent-names nil t)))
+    (when selected
+      (let* ((agent-info (magent-agent-registry-get selected))
+             (session (magent-session-get)))
+        (magent-session-set-agent session agent-info)
+        (message "OpenCode: Agent set to %s" selected)))))
+
+;;;###autoload
+(defun magent-show-current-agent ()
+  "Show the current agent for this session."
+  (interactive)
+  (let* ((session (magent-session-get))
+         (agent (magent-session-get-agent session)))
+    (if agent
+        (message "OpenCode: Current agent is %s (%s)"
+                 (magent-agent-info-name agent)
+                 (or (magent-agent-info-description agent) "no description"))
+      (message "OpenCode: No agent selected (will use default)"))))
 
 (provide 'magent-ui)
 ;;; magent-ui.el ends here

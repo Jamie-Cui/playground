@@ -21,7 +21,8 @@
                (:copier nil))
   messages
   (max-history magent-max-history)
-  (id nil))
+  (id nil)
+  (agent nil))
 
 ;;; Session management
 
@@ -46,6 +47,14 @@
       (let ((id (format "session-%s" (format-time-string "%Y%m%d-%H%M%S"))))
         (setf (magent-session-id session) id)
         id)))
+
+(defun magent-session-get-agent (session)
+  "Get the current agent for SESSION."
+  (magent-session-agent session))
+
+(defun magent-session-set-agent (session agent)
+  "Set the agent for SESSION to AGENT."
+  (setf (magent-session-agent session) agent))
 
 ;;; Message management
 

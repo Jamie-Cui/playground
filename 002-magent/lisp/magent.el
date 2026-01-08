@@ -38,6 +38,13 @@
 ;; - Shell command execution
 ;; - Session management with conversation history
 ;; - Minibuffer interface for quick prompts
+;; - Agent system with specialized agents and permission control
+;;
+;; Agent System:
+;; - Built-in agents: build (default), plan, explore, general, compaction, title, summary
+;; - Permission-based tool access control per agent
+;; - Custom agent support via .opencode/agent/*.md files
+;; - Agent selection per session
 ;;
 ;; Configuration:
 ;; Customize the `magent' group to set your API key, model, and other options.
@@ -45,10 +52,13 @@
 ;;   M-x customize-group RET magent RET
 ;;
 ;; Usage:
-;;   M-x magent-prompt        - Send a prompt to the AI
-;;   M-x magent-prompt-region - Send the selected region to the AI
-;;   M-x magent-ask-at-point  - Ask about the symbol at point
-;;   M-x magent-clear-session - Clear the current session
+;;   M-x magent-prompt         - Send a prompt to the AI
+;;   M-x magent-prompt-region  - Send the selected region to the AI
+;;   M-x magent-ask-at-point   - Ask about the symbol at point
+;;   M-x magent-clear-session  - Clear the current session
+;;   M-x magent-select-agent   - Select an agent for this session
+;;   M-x magent-list-agents    - List all available agents
+;;   M-x magent-show-current-agent - Show current session's agent
 ;;
 ;; Setup:
 ;; 1. Set your API key:
@@ -60,6 +70,9 @@
 ;;
 ;; 3. Optionally set a custom model:
 ;;    (setq magent-model "claude-sonnet-4-20250514")
+;;
+;; 4. Enable globally:
+;;    (global-magent-mode 1)
 
 ;;; Code:
 
@@ -70,6 +83,10 @@
 (require 'magent-tools)
 (require 'magent-agent)
 (require 'magent-ui)
+(require 'magent-agent-registry)
+(require 'magent-agent-info)
+(require 'magent-permission)
+(require 'magent-agent-file)
 
 ;;; Initialization
 
@@ -90,9 +107,18 @@ When enabled, OpenCode commands are available.
             (define-key map (kbd "C-c o s") #'magent-show-session)
             (define-key map (kbd "C-c o l") #'magent-view-log)
             (define-key map (kbd "C-c o L") #'magent-clear-log)
+            ;; Agent management
+            (define-key map (kbd "C-c o A") #'magent-select-agent)
+            (define-key map (kbd "C-c o i") #'magent-show-current-agent)
+            (define-key map (kbd "C-c o v") #'magent-list-agents)
             map)
   (if magent-mode
       (progn
+        ;; Initialize agent registry
+        (magent-agent-registry-init)
+        ;; Load custom agents if enabled
+        (when magent-load-custom-agents
+          (magent-agent-file-load-all))
         (magent-api-set-credentials)
         (message "OpenCode mode enabled"))
     (message "OpenCode mode disabled")))
