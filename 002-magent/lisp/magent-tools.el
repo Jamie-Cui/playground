@@ -1,4 +1,4 @@
-;;; opencode-tools.el --- Tool implementations for OpenCode  -*- lexical-binding: t; -*-
+;;; magent-tools.el --- Tool implementations for OpenCode  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Jamie Cui
 
@@ -13,11 +13,11 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'opencode-config)
+(require 'magent-config)
 
 ;;; Tool definitions
 
-(defun opencode-tools--read-file (path)
+(defun magent-tools--read-file (path)
   "Read contents of file at PATH.
 Returns the file contents as a string, or an error message."
   (condition-case err
@@ -26,7 +26,7 @@ Returns the file contents as a string, or an error message."
         (buffer-string))
     (error (format "Error reading file: %s" (error-message-string err)))))
 
-(defun opencode-tools--write-file (path content)
+(defun magent-tools--write-file (path content)
   "Write CONTENT to file at PATH.
 Creates parent directories if needed.
 Returns success message or error."
@@ -41,7 +41,7 @@ Returns success message or error."
         (format "Successfully wrote %s" path))
     (error (format "Error writing file: %s" (error-message-string err)))))
 
-(defun opencode-tools--grep (pattern path &optional case-sensitive)
+(defun magent-tools--grep (pattern path &optional case-sensitive)
   "Search for PATTERN in files under PATH.
 If CASE-SENSITIVE is nil, performs case-insensitive search.
 Returns matching lines with file paths."
@@ -68,7 +68,7 @@ Returns matching lines with file paths."
           (mapconcat #'identity (nreverse matches) "\n"))
       (error (format "Error during grep: %s" (error-message-string err))))))
 
-(defun opencode-tools--glob (pattern path)
+(defun magent-tools--glob (pattern path)
   "Find files matching PATTERN under PATH.
 Supports * and ** wildcards.
 Returns list of matching file paths."
@@ -80,7 +80,7 @@ Returns list of matching file paths."
         (mapconcat #'identity matches "\n"))
     (error (format "Error during glob: %s" (error-message-string err)))))
 
-(defun opencode-tools--bash (command &optional timeout)
+(defun magent-tools--bash (command &optional timeout)
   "Execute shell COMMAND with optional TIMEOUT in seconds.
 Returns command output (stdout + stderr)."
   (condition-case err
@@ -94,10 +94,10 @@ Returns command output (stdout + stderr)."
 
 ;;; Tool schemas for AI
 
-(defun opencode-tools-get-definitions ()
+(defun magent-tools-get-definitions ()
   "Return tool definitions in the format expected by the API."
   (let ((tools nil))
-    (when (memq 'read opencode-enable-tools)
+    (when (memq 'read magent-enable-tools)
       (push '((name . "read_file")
               (description . "Read the contents of a file. Use this to see the current state of a file before making changes.")
               (input_schema type-object
@@ -105,7 +105,7 @@ Returns command output (stdout + stderr)."
                            (required path)
                            (additionalProperties . :json-false)))
             tools))
-    (when (memq 'write opencode-enable-tools)
+    (when (memq 'write magent-enable-tools)
       (push '((name . "write_file")
               (description . "Write content to a file. Creates parent directories if they don't exist.")
               (input_schema type-object
@@ -113,7 +113,7 @@ Returns command output (stdout + stderr)."
                            (required path content)
                            (additionalProperties . :json-false)))
             tools))
-    (when (memq 'grep opencode-enable-tools)
+    (when (memq 'grep magent-enable-tools)
       (push '((name . "grep")
               (description . "Search for a pattern in files under a directory. Uses regex matching.")
               (input_schema type-object
@@ -121,7 +121,7 @@ Returns command output (stdout + stderr)."
                            (required pattern path)
                            (additionalProperties . :json-false)))
             tools))
-    (when (memq 'glob opencode-enable-tools)
+    (when (memq 'glob magent-enable-tools)
       (push '((name . "glob")
               (description . "Find files matching a pattern. Supports * (any characters) and ** (recursive).")
               (input_schema type-object
@@ -129,7 +129,7 @@ Returns command output (stdout + stderr)."
                            (required pattern path)
                            (additionalProperties . :json-false)))
             tools))
-    (when (memq 'bash opencode-enable-tools)
+    (when (memq 'bash magent-enable-tools)
       (push '((name . "bash")
               (description . "Execute a shell command. Use for running tests, builds, git operations, etc.")
               (input_schema type-object
@@ -140,58 +140,58 @@ Returns command output (stdout + stderr)."
     (nreverse tools)))
 
 ;; Tool property definitions
-(defvar opencode-tools--schema-type-object
+(defvar magent-tools--schema-type-object
   '((type . "object")))
 
-(defvar opencode-tools--prop-path
+(defvar magent-tools--prop-path
   '((path (type . "string") (description . "Absolute or relative path to the file"))))
 
-(defvar opencode-tools--prop-content
+(defvar magent-tools--prop-content
   '((content (type . "string") (description . "Content to write to the file"))))
 
-(defvar opencode-tools--prop-pattern
+(defvar magent-tools--prop-pattern
   '((pattern (type . "string") (description . "Regex pattern to search for"))))
 
-(defvar opencode-tools--prop-search-path
+(defvar magent-tools--prop-search-path
   '((path (type . "string") (description . "Directory to search in"))))
 
-(defvar opencode-tools--prop-case-sensitive
+(defvar magent-tools--prop-case-sensitive
   '((case_sensitive (type . "boolean") (description . "Whether search is case-sensitive") (default . :json-false))))
 
-(defvar opencode-tools--prop-glob-pattern
+(defvar magent-tools--prop-glob-pattern
   '((pattern (type . "string") (description . "Glob pattern, e.g. *.el or **/*.ts"))))
 
-(defvar opencode-tools--prop-command
+(defvar magent-tools--prop-command
   '((command (type . "string") (description . "Shell command to execute"))))
 
-(defvar opencode-tools--prop-timeout
+(defvar magent-tools--prop-timeout
   '((timeout (type . "integer") (description . "Timeout in seconds") (default . 30))))
 
 ;;; Tool execution dispatcher
 
-(defun opencode-tools-execute (tool-name input)
+(defun magent-tools-execute (tool-name input)
   "Execute TOOL with INPUT (parsed JSON object).
 Returns the result as a string."
   (let ((result
          (pcase tool-name
            ("read_file"
-            (opencode-tools--read-file (cdr (assq 'path input))))
+            (magent-tools--read-file (cdr (assq 'path input))))
            ("write_file"
-            (opencode-tools--write-file (cdr (assq 'path input))
+            (magent-tools--write-file (cdr (assq 'path input))
                                        (cdr (assq 'content input))))
            ("grep"
-            (opencode-tools--grep (cdr (assq 'pattern input))
+            (magent-tools--grep (cdr (assq 'pattern input))
                                  (cdr (assq 'path input))
                                  (cdr (assq 'case_sensitive input))))
            ("glob"
-            (opencode-tools--glob (cdr (assq 'pattern input))
+            (magent-tools--glob (cdr (assq 'pattern input))
                                 (cdr (assq 'path input))))
            ("bash"
-            (opencode-tools--bash (cdr (assq 'command input))
+            (magent-tools--bash (cdr (assq 'command input))
                                 (cdr (assq 'timeout input))))
            (_
             (format "Unknown tool: %s" tool-name)))))
     result))
 
-(provide 'opencode-tools)
-;;; opencode-tools.el ends here
+(provide 'magent-tools)
+;;; magent-tools.el ends here

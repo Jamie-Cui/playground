@@ -1,4 +1,4 @@
-;;; opencode-config.el --- Configuration for OpenCode  -*- lexical-binding: t; -*-
+;;; magent-config.el --- Configuration for OpenCode  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Jamie Cui
 
@@ -12,13 +12,13 @@
 
 ;;; Code:
 
-(defgroup opencode nil
+(defgroup magent nil
   "OpenCode AI coding agent for Emacs."
-  :prefix "opencode-"
+  :prefix "magent-"
   :group 'tools
-  :link '(url-link :tag "GitHub" "https://github.com/anomalyco/opencode"))
+  :link '(url-link :tag "GitHub" "https://github.com/anomalyco/magent"))
 
-(defcustom opencode-provider 'anthropic
+(defcustom magent-provider 'anthropic
   "LLM provider to use for AI requests.
 Supported providers: 'anthropic, 'openai, 'openai-compatible."
   :type '(choice (const :tag "Anthropic" anthropic)
@@ -26,50 +26,50 @@ Supported providers: 'anthropic, 'openai, 'openai-compatible."
                  (const :tag "OpenAI Compatible" openai-compatible))
   :set (lambda (sym val)
          (set-default sym val)
-         (when (fboundp 'opencode-api-set-credentials)
-           (opencode-api-set-credentials)))
+         (when (fboundp 'magent-api-set-credentials)
+           (magent-api-set-credentials)))
   :initialize 'custom-initialize-default
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-api-key nil
+(defcustom magent-api-key nil
   "API key for the LLM provider.
 For Anthropic: Get from https://console.anthropic.com/
 For OpenAI: Get from https://platform.openai.com/api-keys"
   :type '(string :tag "API Key")
   :set (lambda (sym val)
          (set-default sym val)
-         (when (fboundp 'opencode-api-set-credentials)
-           (opencode-api-set-credentials)))
+         (when (fboundp 'magent-api-set-credentials)
+           (magent-api-set-credentials)))
   :initialize 'custom-initialize-default
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-base-url nil
+(defcustom magent-base-url nil
   "Base URL for OpenAI-compatible API.
-Only used when `opencode-provider' is set to 'openai-compatible."
+Only used when `magent-provider' is set to 'openai-compatible."
   :type '(string :tag "Base URL")
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-model "claude-sonnet-4-20250514"
+(defcustom magent-model "claude-sonnet-4-20250514"
   "Model identifier to use for AI requests.
 Examples:
 - Anthropic: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022
 - OpenAI: gpt-4o, gpt-4o-mini, o1"
   :type 'string
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-max-tokens 8192
+(defcustom magent-max-tokens 8192
   "Maximum tokens for AI responses."
   :type 'integer
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-temperature 0.7
+(defcustom magent-temperature 0.7
   "Temperature for AI response generation (0.0 to 1.0).
 Lower values make responses more focused and deterministic.
 Higher values make responses more creative and varied."
   :type 'number
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-system-prompt
+(defcustom magent-system-prompt
   "You are OpenCode, an AI coding agent that helps users with software development tasks.
 
 You have access to tools for reading files, editing files, searching code, and running commands. Use these tools to accomplish the user's goals.
@@ -83,19 +83,19 @@ When making code changes:
 If you're unsure about something, ask the user for clarification."
   "System prompt for the AI agent."
   :type 'string
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-buffer-name "*opencode*"
+(defcustom magent-buffer-name "*magent*"
   "Name of the buffer used for OpenCode output."
   :type 'string
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-auto-scroll t
+(defcustom magent-auto-scroll t
   "Automatically scroll output buffer when new content arrives."
   :type 'boolean
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-enable-tools '(read write grep glob bash)
+(defcustom magent-enable-tools '(read write grep glob bash)
   "List of enabled tools.
 Available tools: read, write, grep, glob, bash."
   :type '(set (const :tag "Read files" read)
@@ -103,31 +103,37 @@ Available tools: read, write, grep, glob, bash."
               (const :tag "Search content (grep)" grep)
               (const :tag "Find files (glob)" glob)
               (const :tag "Run shell commands" bash))
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-project-root-function nil
+(defcustom magent-project-root-function nil
   "Function to find project root directory.
 The function should take no arguments and return the project root path as a string.
 If nil, uses `projectile-project-root' when available, or `default-directory'."
   :type '(choice (function :tag "Custom function")
                  (const :tag "Default" nil))
-  :group 'opencode)
+  :group 'magent)
 
-(defcustom opencode-max-history 100
+(defcustom magent-max-history 100
   "Maximum number of messages to keep in session history."
   :type 'integer
-  :group 'opencode)
+  :group 'magent)
+
+(defcustom magent-enable-logging t
+  "Enable logging to the *magent-log* buffer.
+When enabled, API requests and responses are logged for debugging."
+  :type 'boolean
+  :group 'magent)
 
 ;;;###autoload
-(defun opencode-get-api-key ()
+(defun magent-get-api-key ()
   "Get the API key for current provider.
-First checks `opencode-api-key', then falls back to environment variable."
-  (or opencode-api-key
-      (let ((env-var (pcase opencode-provider
+First checks `magent-api-key', then falls back to environment variable."
+  (or magent-api-key
+      (let ((env-var (pcase magent-provider
                        ('anthropic "ANTHROPIC_API_KEY")
                        ('openai "OPENAI_API_KEY")
                        ('openai-compatible "OPENAI_API_KEY"))))
         (when env-var (getenv env-var)))))
 
-(provide 'opencode-config)
-;;; opencode-config.el ends here
+(provide 'magent-config)
+;;; magent-config.el ends here

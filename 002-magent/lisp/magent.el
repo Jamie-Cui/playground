@@ -1,4 +1,4 @@
-;;; opencode.el --- OpenCode AI coding agent for Emacs  -*- lexical-binding: t; -*-
+;;; magent.el --- OpenCode AI coding agent for Emacs  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Jamie Cui
 
@@ -7,7 +7,7 @@
 ;; Keywords: tools, ai, copilot
 ;; Package-Version: 0.1.0
 ;; Package-Requires: ((emacs "27.1"))
-;; URL: https://github.com/anomalyco/opencode
+;; URL: https://github.com/anomalyco/magent
 
 ;; This file is not part of GNU Emacs.
 
@@ -28,7 +28,7 @@
 
 ;;; Commentary:
 
-;; opencode.el is an Emacs Lisp implementation of OpenCode, an open-source
+;; magent.el is an Emacs Lisp implementation of OpenCode, an open-source
 ;; AI coding agent.  It provides intelligent code assistance by integrating
 ;; with Large Language Models (LLMs) like Anthropic's Claude and OpenAI's GPT.
 ;;
@@ -40,73 +40,75 @@
 ;; - Minibuffer interface for quick prompts
 ;;
 ;; Configuration:
-;; Customize the `opencode' group to set your API key, model, and other options.
+;; Customize the `magent' group to set your API key, model, and other options.
 ;;
-;;   M-x customize-group RET opencode RET
+;;   M-x customize-group RET magent RET
 ;;
 ;; Usage:
-;;   M-x opencode-prompt        - Send a prompt to the AI
-;;   M-x opencode-prompt-region - Send the selected region to the AI
-;;   M-x opencode-ask-at-point  - Ask about the symbol at point
-;;   M-x opencode-clear-session - Clear the current session
+;;   M-x magent-prompt        - Send a prompt to the AI
+;;   M-x magent-prompt-region - Send the selected region to the AI
+;;   M-x magent-ask-at-point  - Ask about the symbol at point
+;;   M-x magent-clear-session - Clear the current session
 ;;
 ;; Setup:
 ;; 1. Set your API key:
-;;    (setq opencode-api-key "your-api-key-here")
+;;    (setq magent-api-key "your-api-key-here")
 ;;    or set the ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable.
 ;;
 ;; 2. Choose your provider:
-;;    (setq opencode-provider 'anthropic)  ; or 'openai or 'openai-compatible
+;;    (setq magent-provider 'anthropic)  ; or 'openai or 'openai-compatible
 ;;
 ;; 3. Optionally set a custom model:
-;;    (setq opencode-model "claude-sonnet-4-20250514")
+;;    (setq magent-model "claude-sonnet-4-20250514")
 
 ;;; Code:
 
 ;; Required modules
-(require 'opencode-config)
-(require 'opencode-api)
-(require 'opencode-session)
-(require 'opencode-tools)
-(require 'opencode-agent)
-(require 'opencode-ui)
+(require 'magent-config)
+(require 'magent-api)
+(require 'magent-session)
+(require 'magent-tools)
+(require 'magent-agent)
+(require 'magent-ui)
 
 ;;; Initialization
 
 ;;;###autoload
-(defun opencode-mode ()
+(defun magent-mode ()
   "Minor mode for OpenCode AI coding agent.
 When enabled, OpenCode commands are available.
 
-\\{opencode-mode-map}"
+\\{magent-mode-map}"
   :init-value nil
   :lighter " OpenCode"
   :keymap (let ((map (make-sparse-keymap)))
             ;; Keybindings
-            (define-key map (kbd "C-c o p") #'opencode-prompt)
-            (define-key map (kbd "C-c o r") #'opencode-prompt-region)
-            (define-key map (kbd "C-c o a") #'opencode-ask-at-point)
-            (define-key map (kbd "C-c o c") #'opencode-clear-session)
-            (define-key map (kbd "C-c o s") #'opencode-show-session)
+            (define-key map (kbd "C-c o p") #'magent-prompt)
+            (define-key map (kbd "C-c o r") #'magent-prompt-region)
+            (define-key map (kbd "C-c o a") #'magent-ask-at-point)
+            (define-key map (kbd "C-c o c") #'magent-clear-session)
+            (define-key map (kbd "C-c o s") #'magent-show-session)
+            (define-key map (kbd "C-c o l") #'magent-view-log)
+            (define-key map (kbd "C-c o L") #'magent-clear-log)
             map)
-  (if opencode-mode
+  (if magent-mode
       (progn
-        (opencode-api-set-credentials)
+        (magent-api-set-credentials)
         (message "OpenCode mode enabled"))
     (message "OpenCode mode disabled")))
 
 ;;;###autoload
-(define-globalized-minor-mode global-opencode-mode opencode-mode
-  (lambda () (opencode-mode 1))
-  :group 'opencode)
+(define-globalized-minor-mode global-magent-mode magent-mode
+  (lambda () (magent-mode 1))
+  :group 'magent)
 
 ;; Auto-enable on load
-(add-hook 'after-init-hook #'opencode-api-set-credentials)
+(add-hook 'after-init-hook #'magent-api-set-credentials)
 
-(provide 'opencode)
+(provide 'magent)
 
 ;; Local Variables:
 ;; byte-compile-warnings: (not cl-functions)
 ;; End:
 
-;;; opencode.el ends here
+;;; magent.el ends here

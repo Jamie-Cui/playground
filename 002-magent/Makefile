@@ -1,13 +1,13 @@
 EMACS = emacs
 LOADPATH = -L lisp
 
-SRCS = lisp/opencode.el \
-       lisp/opencode-config.el \
-       lisp/opencode-api.el \
-       lisp/opencode-session.el \
-       lisp/opencode-tools.el \
-       lisp/opencode-agent.el \
-       lisp/opencode-ui.el
+SRCS = lisp/magent.el \
+       lisp/magent-config.el \
+       lisp/magent-api.el \
+       lisp/magent-session.el \
+       lisp/magent-tools.el \
+       lisp/magent-agent.el \
+       lisp/magent-ui.el
 
 COMPILED = $(SRCS:.el=.elc)
 
@@ -16,7 +16,7 @@ COMPILED = $(SRCS:.el=.elc)
 all: compile
 
 help:
-	@echo "OpenCode Emacs Lisp Implementation"
+	@echo "Magent Emacs Lisp Implementation"
 	@echo ""
 	@echo "Targets:"
 	@echo "  compile   - Byte compile all Elisp files"
@@ -36,4 +36,4 @@ clean:
 
 test: compile
 	@echo "Running tests..."
-	$(EMACS) -Q --batch $(LOADPATH) -l lisp/opencode-tests.el -f ert-run-tests-batch-and-exit
+	$(EMACS) -Q --batch $(LOADPATH) -l lisp/magent-tests.el -f ert-run-tests-batch-and-exit

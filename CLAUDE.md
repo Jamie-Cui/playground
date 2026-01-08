@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a personal "playground" repository for experimental code and quick learning projects. Each experiment is isolated in its own numbered directory (e.g., `001-lean-hello-world/`, `002-open-code-elisp/`).
+This is a personal "playground" repository for experimental code and quick learning projects. Each experiment is isolated in its own numbered directory (e.g., `001-lean-hello-world/`, `002-magent/`).
 
 ## Project Structure
 
 The repository contains independent experiments in separate directories:
 
 - `001-lean-hello-world/` - Lean 4 theorem prover project
-- `002-open-code-elisp/` - OpenCode AI coding agent (Emacs Lisp)
+- `002-magent/` - OpenCode AI coding agent (Emacs Lisp)
 
 Each directory is self-contained with its own build system and dependencies.
 
@@ -49,60 +49,61 @@ When adding new modules to the library:
 1. Create files in `Lean4Tutorial/` directory
 2. Import them in `Lean4Tutorial.lean`
 
-## OpenCode Emacs Lisp (002-open-code-elisp/)
+## OpenCode Emacs Lisp (002-magent/)
 
-An Emacs Lisp implementation of [OpenCode](https://github.com/anomalyco/opencode), an open-source AI coding agent with direct API integration to Anthropic Claude and OpenAI GPT models.
+An Emacs Lisp implementation of [OpenCode](https://github.com/anomalyco/magent), an open-source AI coding agent with direct API integration to Anthropic Claude and OpenAI GPT models.
 
 ### Building and Loading
 
 ```bash
 # Byte compile (optional, for performance)
-cd 002-open-code-elisp
+cd 002-magent
 make compile
 ```
 
 ```elisp
 ;; In init.el
-(add-to-list 'load-path "~/proj/playground/002-open-code-elisp/lisp")
-(require 'opencode)
+(add-to-list 'load-path "~/proj/playground/002-magent/lisp")
+(require 'magent)
 
 ;; Configure API key (or set ANTHROPIC_API_KEY / OPENAI_API_KEY env var)
-(setq opencode-api-key "sk-ant-...")
+(setq magent-api-key "sk-ant-...")
 
 ;; Enable globally
-(global-opencode-mode 1)
+(global-magent-mode 1)
 ```
 
 ### Key Commands
 
 | Command | Keybinding | Description |
 |---------|-----------|-------------|
-| `opencode-prompt` | `C-c o p` | Send prompt to AI |
-| `opencode-prompt-region` | `C-c o r` | Send region to AI |
-| `opencode-ask-at-point` | `C-c o a` | Ask about symbol at point |
-| `opencode-clear-session` | `C-c o c` | Clear session history |
+| `magent-prompt` | `C-c o p` | Send prompt to AI |
+| `magent-prompt-region` | `C-c o r` | Send region to AI |
+| `magent-ask-at-point` | `C-c o a` | Ask about symbol at point |
+| `magent-clear-session` | `C-c o c` | Clear session history |
+| `magent-show-session` | `C-c o s` | Show session summary |
 
 ### Architecture
 
 ```
 lisp/
-├── opencode.el         # Main entry point, minor mode
-├── opencode-config.el  # Customize group (opencode-*)
-├── opencode-api.el     # HTTP client for LLM providers
-├── opencode-session.el # Session & message history
-├── opencode-tools.el   # File operations (read, write, grep, glob, bash)
-├── opencode-agent.el   # Agent logic with tool calling
-└── opencode-ui.el      # Minibuffer interface & output buffer
+├── magent.el         # Main entry point, minor mode
+├── magent-config.el  # Customize group (magent-*)
+├── magent-api.el     # HTTP client for LLM providers
+├── magent-session.el # Session & message history
+├── magent-tools.el   # File operations (read, write, grep, glob, bash)
+├── magent-agent.el   # Agent logic with tool calling
+└── magent-ui.el      # Minibuffer interface & output buffer
 ```
 
 ### Configuration
 
-Customize via `M-x customize-group RET opencode RET` or set variables:
+Customize via `M-x customize-group RET magent RET` or set variables:
 
-- `opencode-provider` - `anthropic`, `openai`, or `openai-compatible`
-- `opencode-model` - Model identifier (default: `claude-sonnet-4-20250514`)
-- `opencode-enable-tools` - List of tools: `(read write grep glob bash)`
-- `opencode-buffer-name` - Output buffer name (default: `*opencode*`)
+- `magent-provider` - `anthropic`, `openai`, or `openai-compatible`
+- `magent-model` - Model identifier (default: `claude-sonnet-4-20250514`)
+- `magent-enable-tools` - List of tools: `(read write grep glob bash)`
+- `magent-buffer-name` - Output buffer name (default: `*magent*`)
 
 ### Available Tools
 

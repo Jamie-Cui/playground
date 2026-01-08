@@ -1,4 +1,4 @@
-;;; opencode-session.el --- Session management for OpenCode  -*- lexical-binding: t; -*-
+;;; magent-session.el --- Session management for OpenCode  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Jamie Cui
 
@@ -16,73 +16,74 @@
 
 ;;; Session state structure
 
-(cl-defstruct (opencode-session
-               (:constructor opencode-session-create)
+(cl-defstruct (magent-session
+               (:constructor magent-session-create)
                (:copier nil))
   messages
-  (max-history opencode-max-history)
+  (max-history magent-max-history)
   (id nil))
 
 ;;; Session management
 
-(defvar opencode--current-session nil
+(defvar magent--current-session nil
   "The current active session.")
 
-(defun opencode-session-get ()
+(defun magent-session-get ()
   "Get the current session, creating one if needed."
-  (unless opencode--current-session
-    (setq opencode--current-session (opencode-session-create)))
-  opencode--current-session)
+  (unless magent--current-session
+    (setq magent--current-session (magent-session-create)))
+  magent--current-session)
 
-(defun opencode-session-reset ()
+(defun magent-session-reset ()
   "Reset the current session, clearing all messages."
   (interactive)
-  (setq opencode--current-session nil)
+  (setq magent--current-session nil)
   (message "OpenCode session cleared."))
 
-(defun opencode-session-get-id (session)
+(defun magent-session-get-id (session)
   "Get or generate a unique ID for SESSION."
-  (or (opencode-session-id session)
+  (or (magent-session-id session)
       (let ((id (format "session-%s" (format-time-string "%Y%m%d-%H%M%S"))))
-        (setf (opencode-session-id session) id)
+        (setf (magent-session-id session) id)
         id)))
 
 ;;; Message management
 
-(defun opencode-session-add-message (session role content)
+(defun magent-session-add-message (session role content)
   "Add a message to SESSION.
 ROLE is either 'user', 'assistant', or 'tool'.
 CONTENT can be a string or a list of content blocks."
-  (let ((messages (opencode-session-messages session)))
+  (let ((messages (magent-session-messages session)))
     (push (list (cons 'role role)
                 (cons 'content content))
           messages)
     ;; Trim to max history
-    (when (> (length messages) (opencode-session-max-history session))
+    (when (> (length messages) (magent-session-max-history session))
       (setf messages (butlast messages (- (length messages)
-                                          (opencode-session-max-history session))))
-      (setf (opencode-session-messages session) messages))
-    session))
+                                          (magent-session-max-history session)))))
+    ;; Always update the session messages (was missing before!)
+    (setf (magent-session-messages session) messages))
+  session)
 
-(defun opencode-session-get-messages (session)
+(defun magent-session-get-messages (session)
   "Get all messages from SESSION in chronological order."
-  (reverse (opencode-session-messages session)))
+  (reverse (magent-session-messages session)))
 
-(defun opencode-session-add-tool-result (session tool-use-id result)
+(defun magent-session-add-tool-result (session tool-use-id result)
   "Add a tool result message to SESSION.
 TOOL-USE-ID is the ID of the tool use being responded to.
 RESULT is the string result of tool execution."
-  (opencode-session-add-message
+  (magent-session-add-message
    session 'tool
    `((type . "tool_result")
      (tool_use_id . ,tool-use-id)
      (content . ,result))))
 
-(defun opencode-session-get-context-size (session)
+(defun magent-session-get-context-size (session)
   "Calculate approximate token count of SESSION messages.
 This is a rough estimate assuming ~4 chars per token."
   (let ((total-chars 0))
-    (dolist (msg (opencode-session-get-messages session))
+    (dolist (msg (magent-session-get-messages session))
       (let ((content (cdr (assq 'content msg))))
         (cl-incf total-chars
                (if (stringp content)
@@ -97,39 +98,39 @@ This is a rough estimate assuming ~4 chars per token."
 
 ;;; Session persistence
 
-(defun opencode-session-save (session &optional file)
+(defun magent-session-save (session &optional file)
   "Save SESSION to FILE.
 If FILE is nil, uses a default location based on session ID."
-  (let* ((session-id (opencode-session-get-id session))
-         (default-dir (expand-file-name "opencode-sessions" user-emacs-directory))
+  (let* ((session-id (magent-session-get-id session))
+         (default-dir (expand-file-name "magent-sessions" user-emacs-directory))
          (default-file (expand-file-name (concat session-id ".json") default-dir))
          (filename (or file default-file)))
     (make-directory default-dir t)
     (with-temp-file filename
       (insert (json-encode `((id . ,session-id)
-                            (messages . ,(opencode-session-messages session))
+                            (messages . ,(magent-session-messages session))
                             (timestamp . ,(format-time-string "%Y-%m-%dT%T%z"))))))
     filename))
 
-(defun opencode-session-load (file)
+(defun magent-session-load (file)
   "Load session from FILE."
   (with-temp-buffer
     (insert-file-contents file)
     (let* ((data (json-read))
-           (session (opencode-session-create)))
-      (setf (opencode-session-id session) (cdr (assq 'id data)))
-      (setf (opencode-session-messages session) (cdr (assq 'messages data)))
+           (session (magent-session-create)))
+      (setf (magent-session-id session) (cdr (assq 'id data)))
+      (setf (magent-session-messages session) (cdr (assq 'messages data)))
       session)))
 
-(defun opencode-session-list-saved ()
+(defun magent-session-list-saved ()
   "List all saved session files."
-  (let ((session-dir (expand-file-name "opencode-sessions" user-emacs-directory)))
+  (let ((session-dir (expand-file-name "magent-sessions" user-emacs-directory)))
     (when (file-directory-p session-dir)
       (directory-files session-dir t "\\.json$"))))
 
 ;;; Session context helpers
 
-(defun opencode-session-get-project-files (session &optional directory)
+(defun magent-session-get-project-files (session &optional directory)
   "Get a list of relevant project files for context.
 Uses DIRECTORY or current project root."
   (let* ((default-directory (or directory
@@ -141,10 +142,10 @@ Uses DIRECTORY or current project root."
                   (error nil))))
     files))
 
-(defun opencode-session-summarize (session)
+(defun magent-session-summarize (session)
   "Create a summary of SESSION messages.
 Returns a condensed version of the conversation."
-  (let ((messages (opencode-session-get-messages session)))
+  (let ((messages (magent-session-get-messages session)))
     (when messages
       (with-temp-buffer
         (insert "Session Summary:\n\n")
@@ -162,5 +163,5 @@ Returns a condensed version of the conversation."
             (insert "\n\n")))
         (buffer-string))))))
 
-(provide 'opencode-session)
-;;; opencode-session.el ends here
+(provide 'magent-session)
+;;; magent-session.el ends here

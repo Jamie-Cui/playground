@@ -1,4 +1,4 @@
-;;; opencode-ui.el --- User interface for OpenCode  -*- lexical-binding: t; -*-
+;;; magent-ui.el --- User interface for OpenCode  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Jamie Cui
 
@@ -12,75 +12,112 @@
 
 ;;; Code:
 
-(require 'opencode-session)
-(require 'opencode-agent)
+(require 'magent-session)
+(require 'magent-agent)
 
 ;;; Buffer management
 
-(defvar-local opencode-ui--output-buffer nil
+(defvar-local magent-ui--output-buffer nil
   "The buffer used for OpenCode output.")
 
-(defun opencode-ui-get-buffer ()
-  "Get or create the OpenCode output buffer."
-  (let ((buffer (get-buffer-create opencode-buffer-name)))
+(defvar magent-log-buffer-name "*magent-log*"
+  "Name of the buffer used for Magent logging.")
+
+(defun magent-ui-get-log-buffer ()
+  "Get or create the Magent log buffer."
+  (let ((buffer (get-buffer-create magent-log-buffer-name)))
     (with-current-buffer buffer
-      (unless (derived-mode-p 'opencode-output-mode)
-        (opencode-output-mode)))
+      (unless (derived-mode-p 'magent-log-mode)
+        (magent-log-mode)))
     buffer))
 
-(defun opencode-ui-display-buffer ()
+(defun magent-log (format-string &rest args)
+  "Log a message to the Magent log buffer.
+FORMAT-STRING and ARGS are passed to `format'."
+  (with-current-buffer (magent-ui-get-log-buffer)
+    (let ((inhibit-read-only t)
+          (timestamp (format-time-string "%Y-%m-%d %H:%M:%S")))
+      (goto-char (point-max))
+      (insert (format "[%s] %s\n" timestamp (apply #'format format-string args))))
+    (when magent-auto-scroll
+      (goto-char (point-max))
+      (recenter -1))))
+
+(defun magent-ui-get-buffer ()
+  "Get or create the OpenCode output buffer."
+  (let ((buffer (get-buffer-create magent-buffer-name)))
+    (with-current-buffer buffer
+      (unless (derived-mode-p 'magent-output-mode)
+        (magent-output-mode)))
+    buffer))
+
+(defun magent-ui-display-buffer ()
   "Display the OpenCode output buffer."
-  (let ((buffer (opencode-ui-get-buffer)))
+  (let ((buffer (magent-ui-get-buffer)))
     (display-buffer buffer
                    '((display-buffer-reuse-window
                       display-buffer-in-direction)
                      (direction . bottom)
                      (window-height . 0.3))))
-  (select-window (get-buffer-window opencode-buffer-name)))
+  (select-window (get-buffer-window magent-buffer-name)))
 
-(defun opencode-ui-clear-buffer ()
+(defun magent-ui-clear-buffer ()
   "Clear the OpenCode output buffer."
   (interactive)
-  (with-current-buffer (opencode-ui-get-buffer)
+  (with-current-buffer (magent-ui-get-buffer)
     (let ((inhibit-read-only t))
       (erase-buffer))))
 
 ;;; Output mode
 
-(define-derived-mode opencode-output-mode fundamental-mode "OpenCode"
+(define-derived-mode magent-output-mode fundamental-mode "OpenCode"
   "Major mode for OpenCode output."
   (setq buffer-read-only t)
   (visual-line-mode 1)
   (setq-local display-fill-column-indicator-column nil))
 
+(define-derived-mode magent-log-mode fundamental-mode "MagentLog"
+  "Major mode for Magent log buffer."
+  (setq buffer-read-only t)
+  (visual-line-mode 1)
+  (setq-local display-fill-column-indicator-column nil)
+  (setq-local font-lock-defaults
+              '((
+                 ;; Timestamps
+                 ("\\[\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\} [0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}\\)\\]"
+                  0 font-lock-comment-face)
+                 ;; Log levels
+                 ("\\<\\(ERROR\\|WARNING\\|INFO\\|DEBUG\\)\\>"
+                  0 font-lock-keyword-face)))))
+
 ;;; Rendering functions
 
-(defun opencode-ui-insert-user-message (text)
+(defun magent-ui-insert-user-message (text)
   "Insert user message TEXT into output buffer."
-  (with-current-buffer (opencode-ui-get-buffer)
+  (with-current-buffer (magent-ui-get-buffer)
     (let ((inhibit-read-only t))
       (goto-char (point-max))
       (insert (propertize (format "\n❯ %s\n" text)
                          'face '(bold font-lock-keyword-face)))
-      (when opencode-auto-scroll
+      (when magent-auto-scroll
         (goto-char (point-max))
         (recenter -1)))))
 
-(defun opencode-ui-insert-assistant-message (text)
+(defun magent-ui-insert-assistant-message (text)
   "Insert assistant message TEXT into output buffer."
-  (with-current-buffer (opencode-ui-get-buffer)
+  (with-current-buffer (magent-ui-get-buffer)
     (let ((inhibit-read-only t))
       (goto-char (point-max))
       (insert (propertize "\n🤖 " 'face 'font-lock-string-face))
-      (insert (opencode-ui--render-markdown text))
+      (insert (magent-ui--render-markdown text))
       (insert "\n")
-      (when opencode-auto-scroll
+      (when magent-auto-scroll
         (goto-char (point-max))
         (recenter -1)))))
 
-(defun opencode-ui-insert-tool-call (tool-name input)
+(defun magent-ui-insert-tool-call (tool-name input)
   "Insert tool call notification into output buffer."
-  (with-current-buffer (opencode-ui-get-buffer)
+  (with-current-buffer (magent-ui-get-buffer)
     (let ((inhibit-read-only t))
       (goto-char (point-max))
       (insert (propertize (format "\n🔧 %s" tool-name)
@@ -91,35 +128,35 @@
                                    (truncate-string-to-width
                                     (json-encode input) 100 nil nil "...")))
                          'face 'font-lock-comment-face))
-      (when opencode-auto-scroll
+      (when magent-auto-scroll
         (goto-char (point-max))
         (recenter -1)))))
 
-(defun opencode-ui-insert-error (error-text)
+(defun magent-ui-insert-error (error-text)
   "Insert ERROR-TEXT into output buffer."
-  (with-current-buffer (opencode-ui-get-buffer)
+  (with-current-buffer (magent-ui-get-buffer)
     (let ((inhibit-read-only t))
       (goto-char (point-max))
       (insert (propertize (format "\n⚠ Error: %s\n" error-text)
                          'face '(bold font-lock-warning-face)))
-      (when opencode-auto-scroll
+      (when magent-auto-scroll
         (goto-char (point-max))
         (recenter -1)))))
 
-(defun opencode-ui-insert-streaming (text)
+(defun magent-ui-insert-streaming (text)
   "Insert streaming TEXT into output buffer."
-  (with-current-buffer (opencode-ui-get-buffer)
+  (with-current-buffer (magent-ui-get-buffer)
     (let ((inhibit-read-only t))
       (save-excursion
         (goto-char (point-max))
         (insert text))
-      (when opencode-auto-scroll
+      (when magent-auto-scroll
         (goto-char (point-max))
         (recenter -1)))))
 
 ;;; Basic markdown rendering
 
-(defun opencode-ui--render-markdown (text)
+(defun magent-ui--render-markdown (text)
   "Basic markdown rendering for TEXT.
 Handles code blocks, bold, and inline code."
   (let ((result text))
@@ -152,98 +189,117 @@ Handles code blocks, bold, and inline code."
 ;;; Minibuffer interface
 
 ;;;###autoload
-(defun opencode-prompt ()
+(defun magent-prompt ()
   "Prompt for input and send to OpenCode agent."
   (interactive)
   (let ((input (read-string "OpenCode: ")))
     (when (not (string-blank-p input))
-      (opencode-ui-clear-buffer)
-      (opencode-ui-display-buffer)
-      (opencode-ui-insert-user-message input)
-      (opencode-ui-process input))))
+      (magent-ui-clear-buffer)
+      (magent-ui-display-buffer)
+      (magent-ui-insert-user-message input)
+      (magent-ui-process input))))
 
 ;;;###autoload
-(defun opencode-prompt-region (begin end)
+(defun magent-prompt-region (begin end)
   "Send region from BEGIN to END to OpenCode agent."
   (interactive "r")
   (let ((input (buffer-substring begin end)))
-    (opencode-ui-clear-buffer)
-    (opencode-ui-display-buffer)
-    (opencode-ui-insert-user-message (format "[Region] %s" input))
-    (opencode-ui-process input)))
+    (magent-ui-clear-buffer)
+    (magent-ui-display-buffer)
+    (magent-ui-insert-user-message (format "[Region] %s" input))
+    (magent-ui-process input)))
 
 ;;;###autoload
-(defun opencode-ask-at-point ()
+(defun magent-ask-at-point ()
   "Ask about the symbol at point."
   (interactive)
   (let ((symbol (thing-at-point 'symbol)))
     (when symbol
       (let ((input (format "Explain this code: %s" symbol)))
-        (opencode-ui-clear-buffer)
-        (opencode-ui-display-buffer)
-        (opencode-ui-insert-user-message input)
-        (opencode-ui-process input)))))
+        (magent-ui-clear-buffer)
+        (magent-ui-display-buffer)
+        (magent-ui-insert-user-message input)
+        (magent-ui-process input)))))
 
 ;;; Processing
 
-(defvar opencode-ui--processing nil
+(defvar magent-ui--processing nil
   "Whether a request is currently being processed.")
 
-(defun opencode-ui-process (input)
+(defun magent-ui-process (input)
   "Process INPUT through the agent."
-  (when opencode-ui--processing
+  (when magent-ui--processing
     (error "Already processing a request"))
-  (setq opencode-ui--processing t)
+  (setq magent-ui--processing t)
   (message "OpenCode: Processing...")
 
   (condition-case err
       (progn
         ;; Add a loading indicator
-        (with-current-buffer (opencode-ui-get-buffer)
+        (with-current-buffer (magent-ui-get-buffer)
           (let ((inhibit-read-only t))
             (save-excursion
               (goto-char (point-max))
               (insert (propertize "▌" 'face 'font-lock-comment-face)))))
 
-        (opencode-agent-process
+        (magent-agent-process
          input
          (lambda (response)
-           (opencode-ui--finish-processing response))))
+           (magent-ui--finish-processing response))))
     (error
-     (opencode-ui-insert-error (error-message-string err))
-     (setq opencode-ui--processing nil)
+     (magent-ui-insert-error (error-message-string err))
+     (setq magent-ui--processing nil)
      (message "OpenCode: Error"))))
 
-(defun opencode-ui--finish-processing (response)
+(defun magent-ui--finish-processing (response)
   "Finish processing with RESPONSE."
-  (setq opencode-ui--processing nil)
+  (setq magent-ui--processing nil)
   ;; Remove loading indicator
-  (with-current-buffer (opencode-ui-get-buffer)
+  (with-current-buffer (magent-ui-get-buffer)
     (let ((inhibit-read-only t))
       (save-excursion
         (goto-char (point-max))
         (when (looking-back "▌" 1)
           (delete-char -1)))))
-  (opencode-ui-insert-assistant-message response)
+  (magent-ui-insert-assistant-message response)
   (message "OpenCode: Done"))
 
 ;;; Session management commands
 
 ;;;###autoload
-(defun opencode-clear-session ()
+(defun magent-clear-session ()
   "Clear the current session."
   (interactive)
-  (opencode-session-reset)
-  (opencode-ui-clear-buffer)
+  (magent-session-reset)
+  (magent-ui-clear-buffer)
   (message "OpenCode: Session cleared"))
 
 ;;;###autoload
-(defun opencode-show-session ()
+(defun magent-show-session ()
   "Show the current session summary."
   (interactive)
-  (let ((session (opencode-session-get)))
+  (let ((session (magent-session-get)))
     (with-output-to-temp-buffer "*OpenCode Session*"
-      (princ (opencode-session-summarize session)))))
+      (princ (magent-session-summarize session)))))
 
-(provide 'opencode-ui)
-;;; opencode-ui.el ends here
+;;;###autoload
+(defun magent-view-log ()
+  "View the Magent log buffer."
+  (interactive)
+  (let ((buffer (magent-ui-get-log-buffer)))
+    (switch-to-buffer buffer)
+    (goto-char (point-max))
+    (when magent-auto-scroll
+      (recenter -1))))
+
+;;;###autoload
+(defun magent-clear-log ()
+  "Clear the Magent log buffer."
+  (interactive)
+  (with-current-buffer (magent-ui-get-log-buffer)
+    (let ((inhibit-read-only t))
+      (erase-buffer)))
+  (message "Magent: Log cleared"))
+
+(provide 'magent-ui)
+;;; magent-ui.el ends here
