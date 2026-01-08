@@ -1,1 +1,0 @@
-(".github/workflows/lean_action_ci.yml" ".gitignore" "Lean4Tutorial/Basic.lean" "Lean4Tutorial.lean" "Main.lean" "README.md" "lake-manifest.json" "lakefile.toml" "lean-toolchain")
