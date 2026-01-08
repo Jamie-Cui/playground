@@ -89,35 +89,37 @@ Internal format: ((role . \"user\") (content . \"text\")) or
                 ('anthropic
                  `((role . ,role)
                    (content . ,(if (listp content)
-                                  content
-                                `((type . "text") (text . ,content))))))
+                                   content
+                                 `((type . "text") (text . ,content))))))
                 (_ ; OpenAI format
                  `((role . ,(if (equal role "assistant") "assistant" "user"))
                    (content . ,(if (listp content)
-                                  (let ((text-parts (cl-loop for c in content
-                                                             when (equal (cdr (assq 'type c)) "text")
-                                                             collect (cdr (assq 'text c))))
+                                   (let ((text-parts (cl-loop for c in content
+                                                              when (equal (cdr (assq 'type c)) "text")
+                                                              collect (cdr (assq 'text c))))
                                          (image-parts (cl-loop for c in content
-                                                              when (equal (cdr (assq 'type c)) "image")
-                                                              collect c)))
-                                    (if (null image-parts)
-                                        (mapconcat #'identity text-parts "\n")
-                                      ;; TODO: Handle images for OpenAI
-                                      (mapconcat #'identity text-parts "\n")))
-                                content)))))))
+                                                               when (equal (cdr (assq 'type c)) "image")
+                                                               collect c)))
+                                     (if (null image-parts)
+                                         (mapconcat #'identity text-parts "\n")
+                                       ;; TODO: Handle images for OpenAI
+                                       (mapconcat #'identity text-parts "\n")))
+                                 content)))))))
           messages))
 
 (cl-defun opencode-api-chat (messages &key
-                                    (tools nil)
-                                    (stream nil)
-                                    (model opencode-model)
-                                    (max-tokens opencode-max-tokens)
-                                    (temperature opencode-temperature))
+                                      (tools nil)
+                                      (stream nil)
+                                      (model opencode-model)
+                                      (max-tokens opencode-max-tokens)
+                                      (temperature opencode-temperature)
+                                      (callback nil))
   "Send chat completion request to LLM provider.
 MESSAGES is a list of message objects with 'role and 'content keys.
 TOOLS is a list of available tool definitions (optional).
 STREAM if non-nil enables streaming responses.
-Returns a promise/lambda that when called yields the response."
+CALLBACK is a function called with the response when complete.
+Returns immediately; response is delivered via CALLBACK."
   (let* ((endpoint (opencode-api--get-endpoint))
          (headers (opencode-api--get-headers))
          (converted-messages (opencode-api--convert-messages messages))
@@ -139,10 +141,16 @@ Returns a promise/lambda that when called yields the response."
          (url-request-extra-headers headers)
          (url-request-data request-data))
 
-    (url-retrieve endpoint #'opencode-api--handle-response
+    (url-retrieve endpoint (if callback
+                               (lambda (status &optional args)
+                                 (let* ((buffer (current-buffer))
+                                        (response (opencode-api--parse-response buffer)))
+                                   (kill-buffer buffer)
+                                   (funcall callback response)))
+                             #'opencode-api--handle-response)
                   (list (list :messages messages
-                             :stream stream
-                             :on-complete nil))
+                              :stream stream
+                              :on-complete callback))
                   t t)))
 
 (defun opencode-api--convert-tools (tools)
@@ -194,14 +202,14 @@ ARGS contains context data."
      (cl-loop for block in (cdr (assq 'content response))
               when (equal (cdr (assq 'type block)) "tool_use")
               collect `((id . ,(cdr (assq 'id block)))
-                       (name . ,(cdr (assq 'name block)))
-                       (input . ,(cdr (assq 'input block))))))
+                        (name . ,(cdr (assq 'name block)))
+                        (input . ,(cdr (assq 'input block))))))
     (_ ; OpenAI
      (cl-loop for call in (cdr (assq 'tool_calls response))
               collect `((id . ,(cdr (assq 'id call)))
-                       (name . ,(cdr (assq 'function call)))
-                       (input . ,(opencode-api--json-decode
-                                  (cdr (assq 'arguments call)))))))))
+                        (name . ,(cdr (assq 'function call)))
+                        (input . ,(opencode-api--json-decode
+                                   (cdr (assq 'arguments call)))))))))
 
 ;;; Tool calling support
 
@@ -235,9 +243,9 @@ CALLBACK is called with each content delta."
       (when (string-prefix-p "data: " line)
         (let* ((json-str (substring line 6))
                (data (when (> (length json-str) 0)
-                      (condition-case nil
-                          (opencode-api--json-decode json-str)
-                        (error nil)))))
+                       (condition-case nil
+                           (opencode-api--json-decode json-str)
+                         (error nil)))))
           (when data
             (let ((delta (opencode-api--extract-stream-delta data)))
               (when delta
