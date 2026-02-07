@@ -8,6 +8,27 @@ let currentSearch = '';
 let currentTypeFilter = '';
 let allTypes = [];
 
+// Router
+function parseRoute() {
+    const hash = window.location.hash.slice(1); // Remove #
+    if (hash.startsWith('/item/')) {
+        const uuid = hash.split('/')[2];
+        if (uuid) {
+            viewItem(uuid);
+            return true;
+        }
+    }
+    return false;
+}
+
+function updateRoute(uuid) {
+    window.location.hash = `/item/${uuid}`;
+}
+
+function clearRoute() {
+    history.pushState("", document.title, window.location.pathname + window.location.search);
+}
+
 // DOM Elements
 const itemsList = document.getElementById('itemsList');
 const pagination = document.getElementById('pagination');
@@ -180,6 +201,7 @@ async function viewItem(uuid) {
     try {
         const item = await apiCall(`/items/${uuid}`);
         showItemModal(item);
+        updateRoute(uuid);
     } catch (error) {
         console.error('Failed to load item:', error);
     }
@@ -365,8 +387,18 @@ function escapeHtml(text) {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    loadItems();
     loadItemTypes();
+    // Check URL hash for item route
+    if (!parseRoute()) {
+        loadItems();
+    }
+});
+
+// Handle hash changes
+window.addEventListener('hashchange', () => {
+    if (!parseRoute()) {
+        loadItems();
+    }
 });
 
 searchInput.addEventListener('input', debounce((e) => {
@@ -386,12 +418,21 @@ scanBtn.addEventListener('click', openScanModal);
 
 itemForm.addEventListener('submit', saveItem);
 
-closeModal.addEventListener('click', () => itemModal.classList.remove('active'));
+closeModal.addEventListener('click', () => {
+    itemModal.classList.remove('active');
+    clearRoute();
+});
 closeScanModal.addEventListener('click', () => scanModal.classList.remove('active'));
-cancelBtn.addEventListener('click', () => itemModal.classList.remove('active'));
+cancelBtn.addEventListener('click', () => {
+    itemModal.classList.remove('active');
+    clearRoute();
+});
 
 itemModal.addEventListener('click', (e) => {
-    if (e.target === itemModal) itemModal.classList.remove('active');
+    if (e.target === itemModal) {
+        itemModal.classList.remove('active');
+        clearRoute();
+    }
 });
 
 scanModal.addEventListener('click', (e) => {
@@ -403,7 +444,10 @@ scanInput.addEventListener('input', handleScan);
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        itemModal.classList.remove('active');
+        if (itemModal.classList.contains('active')) {
+            itemModal.classList.remove('active');
+            clearRoute();
+        }
         scanModal.classList.remove('active');
     }
     if (e.key === 'n' && (e.metaKey || e.ctrlKey)) {
